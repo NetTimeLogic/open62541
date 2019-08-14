@@ -38,14 +38,13 @@ jobs:
     displayName: Install Requirements
   - powershell: ./tools/azure-devops/build.ps1
     displayName: "Build: $(CC_NAME)"
-
-  - publish: ./open62541-$(CC_SHORTNAME)-static.zip
-    artifact: open62541-$(CC_SHORTNAME)-static
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-static"
-
-  - publish: ./open62541-$(CC_SHORTNAME)-dynamic.zip
-    artifact: open62541-$(CC_SHORTNAME)-dynamic
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-dynamic"
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: open62541-$(CC_SHORTNAME)
+      # publishing artifacts from PRs from a fork is currently blocked
+    condition: succeeded()
+    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)"
 
 
 - job: 'win_msys64'
@@ -72,14 +71,13 @@ jobs:
   - powershell: ./tools/azure-devops/build.ps1
     displayName: "Build: $(CC_NAME)"
     errorActionPreference: continue # Nodeset Compiler prints to stderror
-
-  - publish: ./open62541-$(CC_SHORTNAME)-static.zip
-    artifact: open62541-$(CC_SHORTNAME)-static
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-static"
-    
-  - publish: ./open62541-$(CC_SHORTNAME)-dynamic.zip
-    artifact: open62541-$(CC_SHORTNAME)-dynamic
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-dynamic"
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: open62541-$(CC_SHORTNAME)
+      # publishing artifacts from PRs from a fork is currently blocked
+    condition: succeeded()
+    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)"
 
 
 
@@ -107,11 +105,11 @@ jobs:
   - powershell: ./tools/azure-devops/build.ps1
     displayName: "Build: $(CC_NAME)"
     errorActionPreference: continue # Nodeset Compiler prints to stderror
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: open62541-$(CC_SHORTNAME)
+      # publishing artifacts from PRs from a fork is currently blocked
+    condition: succeeded()
+    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)"
 
-  - publish: ./open62541-$(CC_SHORTNAME)-static.zip
-    artifact: open62541-$(CC_SHORTNAME)-static
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-static"
-
-  - publish: ./open62541-$(CC_SHORTNAME)-dynamic.zip
-    artifact: open62541-$(CC_SHORTNAME)-dynamic
-    displayName: "Publish Artifact: open62541-$(CC_SHORTNAME)-dynamic"
