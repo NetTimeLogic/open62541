@@ -103,7 +103,7 @@ try {
         exit $LASTEXITCODE
     }
     cd ..
-    & 7z a -tzip open62541-$env:CC_SHORTNAME-static.zip "$env:Build_Repository_LocalPath\pack\*" "$env:Build_Repository_LocalPath-$env:CC_SHORTNAME-static\*"
+    & 7z a -tzip "$env:Build_ArtifactStagingDirectory/open62541-$env:CC_SHORTNAME-static.zip" "$env:Build_Repository_LocalPath\pack\*" "$env:Build_Repository_LocalPath-$env:CC_SHORTNAME-static\*"
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0)
     {
         Write-Host -ForegroundColor Red "`n`n*** Zipping failed. Exiting ... ***"
@@ -128,7 +128,7 @@ try {
         exit $LASTEXITCODE
     }
     cd ..
-    & 7z a -tzip open62541-$env:CC_SHORTNAME-dynamic.zip "$env:Build_Repository_LocalPath\pack\*" "$env:Build_Repository_LocalPath-$env:CC_SHORTNAME-static\*"
+    & 7z a -tzip "$env:Build_ArtifactStagingDirectory/open62541-$env:CC_SHORTNAME-dynamic.zip" "$env:Build_Repository_LocalPath\pack\*" "$env:Build_Repository_LocalPath-$env:CC_SHORTNAME-static\*"
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0)
     {
         Write-Host -ForegroundColor Red "`n`n*** Zipping failed. Exiting ... ***"
