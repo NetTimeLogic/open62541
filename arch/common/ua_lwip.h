@@ -21,6 +21,7 @@
 #include <lwip/netdb.h>
 #include <lwip/init.h>
 #include <lwip/sockets.h>
+#include <netif/ethernet.h>
 
 #define OPTVAL_TYPE int
 
@@ -38,6 +39,7 @@
 #define UA_ERR_CONNECTION_PROGRESS EINPROGRESS
 
 #define UA_send lwip_send
+#define UA_sendraw ethernet_output
 #define UA_recv lwip_recv
 #define UA_sendto lwip_sendto
 #define UA_recvfrom lwip_recvfrom
