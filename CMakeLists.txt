@@ -30,7 +30,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 ###########
-###########
 # Version #
 ###########
 
@@ -256,8 +255,8 @@ option(UA_ENABLE_PUBSUB_ETH_UADP "Enable publish/subscribe UADP over Ethernet" O
 mark_as_advanced(UA_ENABLE_PUBSUB_ETH_UADP)
 if(UA_ENABLE_PUBSUB_ETH_UADP)
     if (NOT CMAKE_SYSTEM MATCHES "Linux")
-    message(FATAL_ERROR  "UADP over Ethernet is only available on Linux.")
-    endif()
+    message(FATAL_ERROR "UADP over Ethernet is only available on Linux.")
+	endif()
 endif()
 
 option(UA_ENABLE_PUBSUB_ETH_UADP_XDP "Enable Subscribe UADP over Ethernet using XDP" OFF)
@@ -344,7 +343,7 @@ option(UA_ENABLE_MALLOC_SINGLETON
 mark_as_advanced(UA_ENABLE_MALLOC_SINGLETON)
 if(UA_ENABLE_MALLOC_SINGLETON)
     if(NOT "${UA_ARCHITECTURE}" MATCHES "posix")
-        message(WARNING "The singleton malloc is available only for the posix architecture")
+        message(FATAL_ERROR "The singleton malloc is available only for the posix architecture")
     endif()
 endif()
 
@@ -985,7 +984,6 @@ else()
         set(UA_FILE_NS0 ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.Reduced.xml)
     endif()
     set(UA_FILE_NODESETS "${UA_FILE_NS0}")
-    list(APPEND UA_FILE_NODESETS ${PROJECT_SOURCE_DIR}/tools/schema/iic.tsn.NodeSet2.Minimal.xml)
 
     set(UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_minimal.txt)
     set(UA_FILE_NODEIDS ${PROJECT_SOURCE_DIR}/tools/schema/NodeIds.csv)
