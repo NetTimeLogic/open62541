@@ -984,6 +984,7 @@ else()
         set(UA_FILE_NS0 ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.Reduced.xml)
     endif()
     set(UA_FILE_NODESETS "${UA_FILE_NS0}")
+    list(APPEND UA_FILE_NODESETS ${PROJECT_SOURCE_DIR}/tools/schema/iic.tsn.NodeSet2.Minimal.xml)
 
     set(UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_minimal.txt)
     set(UA_FILE_NODEIDS ${PROJECT_SOURCE_DIR}/tools/schema/NodeIds.csv)

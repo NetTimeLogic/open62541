@@ -15,6 +15,7 @@ Guid
 ByteString
 XmlElement
 NodeId
+IdType
 ExpandedNodeId
 StatusCode
 QualifiedName
