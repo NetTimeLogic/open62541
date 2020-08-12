@@ -8,6 +8,7 @@
 
 #define UA_INTERNAL
 
+#include <open62541/config.h>
 #include <open62541/network_ws.h>
 #include <open62541/plugin/log_stdout.h>
 #include <open62541/util.h>
@@ -30,7 +31,7 @@ struct ConnectionUserData {
 
 typedef struct ConnectionUserData ConnectionUserData;
 
-//one of these is created for each client connecting to us
+// one of these is created for each client connecting to us
 struct SessionData {
     UA_Connection *connection;
 };
@@ -49,7 +50,7 @@ typedef struct {
 } ServerNetworkLayerWS;
 
 static UA_StatusCode
-connection_getsendbuffer(UA_Connection *connection, size_t length, UA_ByteString *buf) {
+connection_ws_getsendbuffer(UA_Connection *connection, size_t length, UA_ByteString *buf) {
     UA_SecureChannel *channel = connection->channel;
     if(channel && channel->config.sendBufferSize < length)
         return UA_STATUSCODE_BADCOMMUNICATIONERROR;
@@ -63,14 +64,14 @@ connection_getsendbuffer(UA_Connection *connection, size_t length, UA_ByteString
 }
 
 static void
-connection_releasesendbuffer(UA_Connection *connection, UA_ByteString *buf) {
+connection_ws_releasesendbuffer(UA_Connection *connection, UA_ByteString *buf) {
     buf->data -= LWS_PRE;
     buf->length += LWS_PRE;
     UA_ByteString_deleteMembers(buf);
 }
 
 static void
-connection_releaserecvbuffer(UA_Connection *connection, UA_ByteString *buf) {
+connection_ws_releaserecvbuffer(UA_Connection *connection, UA_ByteString *buf) {
     UA_ByteString_deleteMembers(buf);
 }
 
@@ -83,7 +84,7 @@ connection_send(UA_Connection *connection, UA_ByteString *buf) {
 
     ConnectionUserData *buffer = (ConnectionUserData *)connection->handle;
     if(connection->state == UA_CONNECTIONSTATE_CLOSED) {
-        connection_releasesendbuffer(connection, buf);
+        connection_ws_releasesendbuffer(connection, buf);
         return UA_STATUSCODE_BADCONNECTIONCLOSED;
     }
 
@@ -97,6 +98,8 @@ connection_send(UA_Connection *connection, UA_ByteString *buf) {
 static void
 ServerNetworkLayerWS_close(UA_Connection *connection) {
     connection->state = UA_CONNECTIONSTATE_CLOSED;
+    // trigger callback and close;
+    lws_callback_on_writable(((ConnectionUserData *)connection->handle)->wsi);
 }
 
 static void
@@ -105,7 +108,7 @@ freeConnection(UA_Connection *connection) {
         ConnectionUserData *userData = (ConnectionUserData *)connection->handle;
         while(!SIMPLEQ_EMPTY(&userData->messages)) {
             BufferEntry *entry = SIMPLEQ_FIRST(&userData->messages);
-            connection_releasesendbuffer(connection, &entry->msg);
+            connection_ws_releasesendbuffer(connection, &entry->msg);
             SIMPLEQ_REMOVE_HEAD(&userData->messages, next);
             UA_free(entry);
         }
@@ -118,7 +121,7 @@ static int
 callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in,
                size_t len) {
     struct SessionData *pss = (struct SessionData *)user;
-    struct VHostData *vhd =
+    struct VHostData *vhd = 
         (struct VHostData *)lws_protocol_vh_priv_get(lws_get_vhost(wsi),
                                                                    lws_get_protocol(wsi));
 
@@ -133,7 +136,7 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
         case LWS_CALLBACK_ESTABLISHED:
             if(!wsi)
                 break;
-            ServerNetworkLayerWS *layer = (ServerNetworkLayerWS*)lws_context_user(vhd->context);
+            ServerNetworkLayerWS *layer = (ServerNetworkLayerWS *)lws_context_user(vhd->context);
             UA_Connection *c = (UA_Connection *)malloc(sizeof(UA_Connection));
             ConnectionUserData *buffer =
                 (ConnectionUserData *)malloc(sizeof(ConnectionUserData));
@@ -145,9 +148,9 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
             c->send = connection_send;
             c->close = ServerNetworkLayerWS_close;
             c->free = freeConnection;
-            c->getSendBuffer = connection_getsendbuffer;
-            c->releaseSendBuffer = connection_releasesendbuffer;
-            c->releaseRecvBuffer = connection_releaserecvbuffer;
+            c->getSendBuffer = connection_ws_getsendbuffer;
+            c->releaseSendBuffer = connection_ws_releasesendbuffer;
+            c->releaseRecvBuffer = connection_ws_releaserecvbuffer;
             // stack sets the connection to established
             c->state = UA_CONNECTIONSTATE_OPENING;
             c->openingDate = UA_DateTime_nowMonotonic();
@@ -160,11 +163,11 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
                 pss->connection->state = UA_CONNECTIONSTATE_CLOSED;
             }
 
-            layer = (ServerNetworkLayerWS*)lws_context_user(vhd->context);
+            layer = (ServerNetworkLayerWS *)lws_context_user(vhd->context);
             if(layer && layer->server) {
                 UA_Server_removeConnection(layer->server, pss->connection);
             }
-            
+
             break;
 
         case LWS_CALLBACK_SERVER_WRITEABLE:
@@ -173,6 +176,16 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
 
             ConnectionUserData *b = (ConnectionUserData *)pss->connection->handle;
             do {
+                if(!pss->connection ||
+                   pss->connection->state == UA_CONNECTIONSTATE_CLOSED) {
+                    /*
+                    connetion is closed signal it to lws:
+                    lws documentation says:
+                    When you want to close a connection,
+                    you do it by returning -1 from a callback for that connection.
+                    */
+                    return -1;
+                }
 
                 BufferEntry *entry = SIMPLEQ_FIRST(&b->messages);
                 if(!entry)
@@ -184,7 +197,7 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
                     lwsl_err("ERROR %d writing to ws\n", m);
                     return -1;
                 }
-                connection_releasesendbuffer(pss->connection, &entry->msg);
+                connection_ws_releasesendbuffer(pss->connection, &entry->msg);
                 SIMPLEQ_REMOVE_HEAD(&b->messages, next);
                 UA_free(entry);
             } while(!lws_send_pipe_choked(wsi));
@@ -195,7 +208,7 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
             }
             break;
 
-    case LWS_CALLBACK_RECEIVE: {
+        case LWS_CALLBACK_RECEIVE: {
             if(!vhd->context)
                 break;
             layer = (ServerNetworkLayerWS *)lws_context_user(vhd->context);
@@ -205,7 +218,7 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
             UA_ByteString message = {len, (UA_Byte *)in};
             UA_Server_processBinaryMessage(layer->server, pss->connection, &message);
             break;
-    }
+        }
 
         default:
             break;
@@ -216,9 +229,12 @@ callback_opcua(struct lws *wsi, enum lws_callback_reasons reason, void *user, vo
 
 static struct lws_protocols protocols[] = {
     {"http", lws_callback_http_dummy, 0, 0, 0, NULL, 0},
+    /* default protocol */
     {"opcua", callback_opcua, sizeof(struct SessionData), 0, 0, NULL, 0},
-    {NULL, NULL, 0, 0, 0, NULL, 0}
-};
+    /* defined protocols: https://reference.opcfoundation.org/v104/Core/docs/Part6/7.5.2/ */
+    {"opcua+uacp", callback_opcua, sizeof(struct SessionData), 0, 0, NULL, 0},
+    // {"opcua+json", callback_opcua, sizeof(struct SessionData), 0, 0, NULL, 0}, // <-- enable when json coding is fully supported
+    {NULL, NULL, 0, 0, 0, NULL, 0}};
 
 // make the opcua protocol callback the default one
 const struct lws_protocol_vhost_options pvo_opt = {NULL, NULL, "default", "1"};
@@ -250,7 +266,7 @@ ServerNetworkLayerWS_start(UA_ServerNetworkLayer *nl, const UA_String *customHos
         }
     }
     // we need discoveryUrl.data as a null-terminated string for vhost_name
-    nl->discoveryUrl.data = (UA_Byte *)UA_malloc(du.length+1);
+    nl->discoveryUrl.data = (UA_Byte *)UA_malloc(du.length + 1);
     strncpy((char *)nl->discoveryUrl.data, discoveryUrlBuffer, du.length);
     nl->discoveryUrl.data[du.length] = '\0';
     nl->discoveryUrl.length = du.length;

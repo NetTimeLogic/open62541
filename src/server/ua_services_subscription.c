@@ -76,7 +76,7 @@ Service_CreateSubscription(UA_Server *server, UA_Session *session,
     }
 
     /* Create the subscription */
-    UA_Subscription *newSubscription = UA_Subscription_new(session, response->subscriptionId);
+    UA_Subscription *newSubscription = UA_Subscription_new();
     if(!newSubscription) {
         UA_LOG_DEBUG_SESSION(&server->config.logger, session,
                              "Processing CreateSubscriptionRequest failed");
@@ -84,7 +84,8 @@ Service_CreateSubscription(UA_Server *server, UA_Session *session,
         return;
     }
 
-    UA_Session_addSubscription(server, session, newSubscription); /* Also assigns the subscription id */
+    /* Also assigns the subscription Id */
+    UA_Session_addSubscription(server, session, newSubscription);
 
     /* Set the subscription parameters */
     newSubscription->publishingEnabled = request->publishingEnabled;
@@ -293,7 +294,12 @@ Service_Publish(UA_Server *server, UA_Session *session,
 static void
 Operation_DeleteSubscription(UA_Server *server, UA_Session *session, void *_,
                              const UA_UInt32 *subscriptionId, UA_StatusCode *result) {
-    *result = UA_Session_deleteSubscription(server, session, *subscriptionId);
+    UA_Subscription *sub = UA_Session_getSubscriptionById(session, *subscriptionId);
+    if(sub)
+        *result = UA_Session_deleteSubscription(server, session, sub);
+    else
+        *result = UA_STATUSCODE_BADSUBSCRIPTIONIDINVALID;
+
     if(*result == UA_STATUSCODE_GOOD) {
         UA_LOG_DEBUG_SESSION(&server->config.logger, session,
                              "Subscription %" PRIu32 " | Subscription deleted",
@@ -319,12 +325,9 @@ Service_DeleteSubscriptions(UA_Server *server, UA_Session *session,
                   &request->subscriptionIdsSize, &UA_TYPES[UA_TYPES_UINT32],
                   &response->resultsSize, &UA_TYPES[UA_TYPES_STATUSCODE]);
 
-    /* The session has at least one subscription */
-    if(LIST_FIRST(&session->serverSubscriptions))
-        return;
-
     /* Send remaining publish responses if the last subscription was removed */
-    UA_Subscription_answerPublishRequestsNoSubscription(server, session);
+    if(!LIST_FIRST(&session->serverSubscriptions))
+        UA_Subscription_answerPublishRequestsNoSubscription(server, session);
 }
 
 void

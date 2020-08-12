@@ -33,17 +33,18 @@ _UA_BEGIN_DECLS
 
 /* Short names for integer. These are not exposed on the public API, since many
  * user-applications make the same definitions in their headers. */
-//typedef UA_Byte u8;
+typedef UA_Byte u8;
 typedef UA_SByte i8;
-//typedef UA_UInt16 u16;
+typedef UA_UInt16 u16;
 typedef UA_Int16 i16;
-//typedef UA_UInt32 u32;
+typedef UA_UInt32 u32;
 typedef UA_Int32 i32;
-//typedef UA_UInt64 u64;
+typedef UA_UInt64 u64;
 typedef UA_Int64 i64;
 typedef UA_StatusCode status;
 
-/* Utility Functions
+/**
+ * Utility Functions
  * ----------------- */
 
 /* Get the number of optional fields contained in an structure type */

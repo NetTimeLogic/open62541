@@ -246,7 +246,7 @@ UA_PubSubChannelEthernet_send(UA_PubSubChannel *channel, UA_ExtensionObject *tra
     p = pbuf_alloc(PBUF_LINK, lenBuf, PBUF_RAM);
     pbuf_take(p, (void *)buf->data, (u16_t)lenBuf);
     if (p == NULL) {
-        xil_printf("pbuf error \r\n");
+        printf("pbuf error \r\n");
         return UA_STATUSCODE_BADINTERNALERROR;
     }
 
@@ -259,7 +259,7 @@ UA_PubSubChannelEthernet_send(UA_PubSubChannel *channel, UA_ExtensionObject *tra
         eth_type = ETHERTYPE_VLAN;
         
         if (pbuf_add_header(p, SIZEOF_VLAN_HDR) != 0) {
-            xil_printf("pbuf error \r\n");
+            printf("pbuf error \r\n");
             return UA_STATUSCODE_BADINTERNALERROR;
          }
          

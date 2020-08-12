@@ -50,7 +50,6 @@ typedef struct {
     UA_UInt16 availableContinuationPoints;
     ContinuationPoint *continuationPoints;
 #ifdef UA_ENABLE_SUBSCRIPTIONS
-    UA_UInt32 lastSubscriptionId;
     UA_UInt32 lastSeenSubscriptionId;
     LIST_HEAD(UA_ListOfUASubscriptions, UA_Subscription) serverSubscriptions;
     SIMPLEQ_HEAD(UA_ListOfQueuedPublishResponses, UA_PublishResponseEntry) responseQueue;
@@ -90,7 +89,7 @@ UA_Session_getSubscriptionById(UA_Session *session,
 
 UA_StatusCode
 UA_Session_deleteSubscription(UA_Server *server, UA_Session *session,
-                              UA_UInt32 subscriptionId);
+                              UA_Subscription *sub);
 
 void
 UA_Session_queuePublishReq(UA_Session *session,

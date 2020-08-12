@@ -141,9 +141,12 @@ UA_String_equal_ignorecase(const UA_String *s1, const UA_String *s2) {
         return true;
     if(s2->data == NULL)
         return false;
-
+#ifdef UA_ARCHITECTURE_FREERTOSLWIP
+    return strcmp((const char*)s1->data, (const char*)s2->data) == 0;
+#else
     //FIXME this currently does not handle UTF8
     return UA_strncasecmp((const char*)s1->data, (const char*)s2->data, s1->length) == 0;
+#endif
 }
 
 static UA_StatusCode
@@ -424,13 +427,15 @@ UA_NodeId_hash(const UA_NodeId *n) {
     switch(n->identifierType) {
     case UA_NODEIDTYPE_NUMERIC:
     default:
-        // shift knuth multiplication to use highest 32 bits and after addition make sure we don't have an integer overflow
-        return (u32)((n->namespaceIndex + ((n->identifier.numeric * (u64)2654435761) >> (32))) & UINT32_C(4294967295)); /*  Knuth's multiplicative hashing */
+        return UA_ByteString_hash(n->namespaceIndex, (const u8*)&n->identifier.numeric,
+                                  sizeof(UA_UInt32));
     case UA_NODEIDTYPE_STRING:
     case UA_NODEIDTYPE_BYTESTRING:
-        return UA_ByteString_hash(n->namespaceIndex, n->identifier.string.data, n->identifier.string.length);
+        return UA_ByteString_hash(n->namespaceIndex, n->identifier.string.data,
+                                  n->identifier.string.length);
     case UA_NODEIDTYPE_GUID:
-        return UA_ByteString_hash(n->namespaceIndex, (const u8*)&n->identifier.guid, sizeof(UA_Guid));
+        return UA_ByteString_hash(n->namespaceIndex, (const u8*)&n->identifier.guid,
+                                  sizeof(UA_Guid));
     }
 }
 
@@ -476,8 +481,11 @@ UA_ExpandedNodeId_order(const UA_ExpandedNodeId *n1,
 u32
 UA_ExpandedNodeId_hash(const UA_ExpandedNodeId *n) {
     u32 h = UA_NodeId_hash(&n->nodeId);
-    h = UA_ByteString_hash(h, (const UA_Byte*)&n->serverIndex, 4);
-    return UA_ByteString_hash(h, n->namespaceUri.data, n->namespaceUri.length);
+    if(n->serverIndex != 0)
+        h = UA_ByteString_hash(h, (const UA_Byte*)&n->serverIndex, 4);
+    if(n->namespaceUri.length != 0)
+        h = UA_ByteString_hash(h, n->namespaceUri.data, n->namespaceUri.length);
+    return h;
 }
 
 /* ExtensionObject */

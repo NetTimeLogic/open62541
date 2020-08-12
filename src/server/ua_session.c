@@ -8,8 +8,8 @@
  */
 
 #include "ua_session.h"
-#ifdef UA_ENABLE_SUBSCRIPTIONS
 #include "ua_server_internal.h"
+#ifdef UA_ENABLE_SUBSCRIPTIONS
 #include "ua_subscription.h"
 #endif
 
@@ -88,9 +88,11 @@ void UA_Session_updateLifetime(UA_Session *session) {
 
 #ifdef UA_ENABLE_SUBSCRIPTIONS
 
-void UA_Session_addSubscription(UA_Server *server, UA_Session *session, UA_Subscription *newSubscription) {
-    newSubscription->subscriptionId = ++session->lastSubscriptionId;
-
+void
+UA_Session_addSubscription(UA_Server *server, UA_Session *session,
+                           UA_Subscription *newSubscription) {
+    newSubscription->session = session;
+    newSubscription->subscriptionId = ++server->lastSubscriptionId;
     LIST_INSERT_HEAD(&session->serverSubscriptions, newSubscription, listEntry);
     session->numSubscriptions++;
     server->numSubscriptions++;
@@ -98,14 +100,10 @@ void UA_Session_addSubscription(UA_Server *server, UA_Session *session, UA_Subsc
 
 UA_StatusCode
 UA_Session_deleteSubscription(UA_Server *server, UA_Session *session,
-                              UA_UInt32 subscriptionId) {
+                              UA_Subscription *sub) {
     UA_LOCK_ASSERT(server->serviceMutex, 1);
 
-    UA_Subscription *sub = UA_Session_getSubscriptionById(session, subscriptionId);
-    if(!sub)
-        return UA_STATUSCODE_BADSUBSCRIPTIONIDINVALID;
-
-    UA_Subscription_deleteMembers(server, sub);
+    UA_Subscription_clear(server, sub);
 
     /* Add a delayed callback to remove the subscription when the currently
      * scheduled jobs have completed. There is no actual delayed callback. Just
@@ -119,6 +117,11 @@ UA_Session_deleteSubscription(UA_Server *server, UA_Session *session,
     UA_assert(server->numSubscriptions > 0);
     session->numSubscriptions--;
     server->numSubscriptions--;
+
+    UA_LOG_INFO_SESSION(&server->config.logger, sub->session,
+                        "Subscription %" PRIu32 " | Deleted the Subscription",
+                        sub->subscriptionId);
+
     return UA_STATUSCODE_GOOD;
 }
 
@@ -126,6 +129,9 @@ UA_Subscription *
 UA_Session_getSubscriptionById(UA_Session *session, UA_UInt32 subscriptionId) {
     UA_Subscription *sub;
     LIST_FOREACH(sub, &session->serverSubscriptions, listEntry) {
+        /* Prevent lookup of subscriptions that are to be deleted with a statuschange */
+        if(sub->statusChange != UA_STATUSCODE_GOOD)
+            continue;
         if(sub->subscriptionId == subscriptionId)
             break;
     }
